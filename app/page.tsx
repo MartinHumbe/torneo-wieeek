@@ -8,7 +8,7 @@ const ITEMS_PER_PAGE = 7;
 export default function Home() {
   const [players, setPlayers] = useState<any[]>([]);
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
-  const [areGamesRevealed, setAreGamesRevealed] = useState(true); // NUEVO ESTADO
+  const [areGamesRevealed, setAreGamesRevealed] = useState(false); // NUEVO ESTADO
   
   const [filterCategory, setFilterCategory] = useState<'all' | 'minecraft' | 'clash' | 'fifa'>('all');
   const [searchQuery, setSearchQuery] = useState('');
