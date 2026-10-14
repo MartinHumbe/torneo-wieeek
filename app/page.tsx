@@ -236,11 +236,11 @@ export default function Home() {
           Registro de Participantes
         </h2>
         <div className="w-full max-w-xl bg-surface-container/85 backdrop-blur-xl rounded-xl p-6 md:p-10 border border-outline-variant/30 shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
-          <div className="mb-6 p-4 rounded bg-surface-container-highest/60 border border-secondary-container/40 flex items-start gap-3">
+         <div className="mb-6 p-4 rounded bg-surface-container-highest/60 border border-secondary-container/40 flex items-start gap-3">
             <span className="material-symbols-outlined text-secondary-fixed mt-0.5">local_fire_department</span>
             <div className="flex flex-col">
-              <span className="text-secondary-fixed font-bold tracking-tight">Cupo limitado a 20 participantes</span>
-              <span className="text-sm text-on-surface-variant mt-1">Quedan <strong className="text-primary-container font-mono">{Math.max(0, 20 - players.length)}</strong> plazas disponibles.</span>
+              <span className="text-secondary-fixed font-bold tracking-tight">Cupo limitado a 30 participantes</span>
+              <span className="text-sm text-on-surface-variant mt-1">Quedan <strong className="text-primary-container font-mono">{Math.max(0, 30 - players.length)}</strong> plazas disponibles.</span>
             </div>
           </div>
           {isRegistrationOpen ? (
