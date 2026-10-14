@@ -138,9 +138,9 @@ export default function Home() {
           <div className="animate-marquee flex gap-16 items-center px-8 shrink-0">
             {[1, 2, 3].map((group) => (
               <div key={`p1-${group}`} className="flex gap-16 items-center shrink-0">
-                <img src="/logos/ieee.png" alt="IEEE ESTL" className="h-10 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
-                <img src="/logos/wieeek.png" alt="WIEEEK" className="h-10 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
-                <img src="/logos/uaeh.png" alt="UAEH" className="h-10 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
+                <img src="/logos/logo-ieee.png" alt="IEEE ESTL" className="h-10 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
+                <img src="/logos/logo-wieeek.png" alt="WIEEEK" className="h-10 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
+                <img src="/logos/logo-uaeh.png" alt="UAEH" className="h-10 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
               </div>
             ))}
           </div>
