@@ -138,8 +138,8 @@ export default function Home() {
           <div className="animate-marquee flex gap-16 items-center px-8 shrink-0">
             {[1, 2, 3].map((group) => (
               <div key={`p1-${group}`} className="flex gap-16 items-center shrink-0">
-                <img src="/logos/logo-ieee.png" alt="IEEE ESTL" className="h-10 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
-                <img src="/logos/logo-wieeek.png" alt="WIEEEK" className="h-10 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
+                <img src="/logos/logo-ieee.png" alt="IEEE ESTL" className="h-14 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
+                <img src="/logos/logo-wieeek.png" alt="WIEEEK" className="h-12 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
                 <img src="/logos/logo-uaeh.png" alt="UAEH" className="h-10 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
               </div>
             ))}
@@ -149,8 +149,8 @@ export default function Home() {
           <div className="animate-marquee flex gap-16 items-center px-8 shrink-0">
             {[1, 2, 3].map((group) => (
               <div key={`p2-${group}`} className="flex gap-16 items-center shrink-0">
-                <img src="/logos/logo-ieee.png" alt="IEEE ESTL" className="h-10 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
-                <img src="/logos/logo-wieeek.png" alt="WIEEEK" className="h-10 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
+                <img src="/logos/logo-ieee.png" alt="IEEE ESTL" className="h-14 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
+                <img src="/logos/logo-wieeek.png" alt="WIEEEK" className="h-12 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
                 <img src="/logos/logo-uaeh.png" alt="UAEH" className="h-10 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
               </div>
             ))}
@@ -393,6 +393,62 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* FOOTER COMPLETO */}
+      <footer className="w-full border-t border-outline-variant/30 bg-surface-container-lowest py-10 mt-16 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 md:px-10 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
+          
+          {/* COLUMNA IZQUIERDA: Marca y Redes */}
+          <div className="flex flex-col items-center md:items-start">
+            <span className="font-display text-xl font-bold text-on-surface uppercase tracking-wider">WIEEEK 2026</span>
+            <span className="font-mono text-[10px] text-outline uppercase tracking-widest mt-1">Torneo E-Sports Oficial</span>
+            
+            {/* AQUÍ PUEDES AGREGAR TUS REDES SOCIALES */}
+            <div className="flex gap-4 mt-4">
+              <a href="https://www.instagram.com/uaehestlieee/?utm_source=ig_web_button_share_sheet" className="text-outline hover:text-primary-container transition-colors" title="Instagram">
+                <span className="material-symbols-outlined text-xl">photo_camera</span>
+              </a>
+              <a href="#" className="text-outline hover:text-primary-container transition-colors" title="Instagram">
+                <span className="material-symbols-outlined text-xl">thumb_up</span>
+              </a>
+              
+            </div>
+          </div>
+          
+          {/* COLUMNA CENTRAL: Organizado por (CON ENLACE) */}
+          <div className="flex flex-col items-center">
+            <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Organizado por</span>
+            <a 
+              href="https://ieee-estl.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 group hover:scale-105 transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-primary-container text-[22px] group-hover:text-primary-fixed">school</span>
+              <span className="font-bold text-primary-container uppercase tracking-wider text-sm group-hover:text-primary-fixed group-hover:underline underline-offset-4">
+                Rama Estudiantil IEEE UAEH ESTL
+              </span>
+            </a>
+            
+            {/* AQUÍ PUEDES AGREGAR MÁS ORGANIZADORES O PATROCINADORES */}
+            
+          </div>
+
+          {/* COLUMNA DERECHA: Créditos y Políticas */}
+          <div className="flex flex-col items-center md:items-end">
+            <span className="font-mono text-[10px] text-outline uppercase tracking-widest flex items-center gap-1">
+              <span className="material-symbols-outlined text-[14px]">terminal</span> Desarrollado por Tin :*
+            </span>
+            <span className="font-mono text-[10px] text-outline uppercase tracking-widest mt-1">© 2026 Todos los derechos reservados</span>
+            
+            {/* AQUÍ PUEDES AGREGAR LINKS DE REGLAMENTOS O CONTACTO */}
+            <button onClick={() => setShowRules(true)} className="font-mono text-[10px] text-outline/60 uppercase tracking-widest mt-3 hover:text-primary-container transition-colors cursor-pointer">
+              Ver Reglamento del Torneo
+            </button>
+          </div>
+
+        </div>
+      </footer>
     </main>
   );
 }
