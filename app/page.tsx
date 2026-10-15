@@ -17,6 +17,7 @@ export default function Home() {
   const [selectedPlayer, setSelectedPlayer] = useState<any | null>(null);
   const [showPlayerModal, setShowPlayerModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,6 +72,9 @@ export default function Home() {
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting) return; // Evita clics dobles
+    setIsSubmitting(true);    // Bloquea el botón
+    
     const form = e.currentTarget;
     const formData = new FormData(form);
     
@@ -79,12 +83,14 @@ export default function Home() {
 
     if (whatsapp.length !== 10 || !/^\d{10}$/.test(whatsapp)) {
       alert('El número de WhatsApp debe tener exactamente 10 dígitos numéricos.');
+      setIsSubmitting(false); // Libera el botón si hay error
       return;
     }
 
     const { data: existingUser } = await supabase.from('players').select('id').eq('account', account);
     if (existingUser && existingUser.length > 0) {
       alert(`La cuenta UAEH ${account} ya está registrada en el torneo.`);
+      setIsSubmitting(false); // Libera el botón si hay error
       return;
     }
 
@@ -98,12 +104,14 @@ export default function Home() {
     }]);
 
     if (error) {
-      alert('Hubo un error al registrarte. Intenta de nuevo.');
+      alert('Hubo un error al registrarte. (Verifica que tu cuenta no esté registrada ya).');
+      setIsSubmitting(false); // Libera el botón si hay error
       return;
     }
 
     setShowSuccess(true);
     form.reset();
+    setIsSubmitting(false); // Libera el botón al terminar
   };
 
   const scrollToSection = (id: string) => {
@@ -287,8 +295,12 @@ export default function Home() {
                   <input required name="gamertag" type="text" placeholder="Ej. Shadow_ESTL #7821" className="w-full bg-surface-container-lowest text-on-surface font-mono pl-10 pr-4 py-2.5 rounded border border-outline-variant/30" />
                 </div>
               </div>
-              <button type="submit" className="mt-4 w-full py-3 rounded bg-primary-container text-background font-display text-lg uppercase font-bold">
-                Inscribirme
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                className={`mt-4 w-full py-3 rounded font-display text-lg uppercase font-bold transition-all ${isSubmitting ? 'bg-surface-container text-outline cursor-not-allowed' : 'bg-primary-container text-background'}`}
+              >
+                {isSubmitting ? 'Inscribiendo...' : 'Inscribirme'}
               </button>
             </form>
           ) : (
@@ -405,7 +417,7 @@ export default function Home() {
             
             {/* AQUÍ PUEDES AGREGAR TUS REDES SOCIALES */}
             <div className="flex gap-4 mt-4">
-              <a href="https://www.instagram.com/uaehestlieee/?utm_source=ig_web_button_share_sheet" className="text-outline hover:text-primary-container transition-colors" title="Instagram">
+              <a href="https://www.instagram.com/uaehestlieee/?utm_source=ig_web_button_share_sheet" target="_blank"  className="text-outline hover:text-primary-container transition-colors" title="Instagram">
                 <span className="material-symbols-outlined text-xl">photo_camera</span>
               </a>
               <a href="#" className="text-outline hover:text-primary-container transition-colors" title="Instagram">
