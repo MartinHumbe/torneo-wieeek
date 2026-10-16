@@ -53,23 +53,31 @@ export default function Home() {
 
   useEffect(() => { setCurrentPage(1); }, [searchQuery, filterCategory]);
 
-  const filteredAndSortedPlayers = useMemo(() => {
-    let filtered = [...players];
+const { podiumPlayers, filteredPlayers } = useMemo(() => {
+    // 1. Ordenamos por la categoría seleccionada
+    let sorted = [...players];
+    if (filterCategory === 'minecraft') sorted.sort((a, b) => b.mc - a.mc);
+    else if (filterCategory === 'clash') sorted.sort((a, b) => b.cr - a.cr);
+    else if (filterCategory === 'fifa') sorted.sort((a, b) => b.fifa - a.fifa);
+    else sorted.sort((a, b) => b.total - a.total);
+
+    // 2. Asignamos la posición real (rango) a cada jugador y aseguramos el Podio
+    const ranked = sorted.map((player, index) => ({ ...player, rank: index + 1 }));
+    const podium = ranked.slice(0, 3);
+
+    // 3. Aplicamos la búsqueda solo para la tabla
+    let filtered = ranked;
     if (searchQuery.trim() !== '') {
       const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || p.gamertag.toLowerCase().includes(q));
+      filtered = ranked.filter(p => p.name.toLowerCase().includes(q) || p.gamertag.toLowerCase().includes(q));
     }
-    if (filterCategory === 'minecraft') filtered.sort((a, b) => b.mc - a.mc);
-    else if (filterCategory === 'clash') filtered.sort((a, b) => b.cr - a.cr);
-    else if (filterCategory === 'fifa') filtered.sort((a, b) => b.fifa - a.fifa);
-    else filtered.sort((a, b) => b.total - a.total);
-    return filtered;
+
+    return { podiumPlayers: podium, filteredPlayers: filtered };
   }, [players, filterCategory, searchQuery]);
 
-  const top3 = filteredAndSortedPlayers.slice(0, 3);
-  const totalPages = Math.ceil(filteredAndSortedPlayers.length / ITEMS_PER_PAGE);
-  const paginatedPlayers = filteredAndSortedPlayers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-
+  const top3 = podiumPlayers;
+  const totalPages = Math.ceil(filteredPlayers.length / ITEMS_PER_PAGE);
+  const paginatedPlayers = filteredPlayers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSubmitting) return; // Evita clics dobles
@@ -343,6 +351,25 @@ export default function Home() {
                 </div>
               </div>
             )}
+            {/* CONTROLES DE BÚSQUEDA Y FILTROS */}
+            <div className="w-full max-w-5xl flex flex-col md:flex-row gap-4 justify-between items-center mb-6">
+              <div className="relative w-full md:w-96">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+                <input 
+                  type="text" 
+                  placeholder="Buscar jugador o gamertag..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-surface-container-low text-on-surface pl-10 pr-4 py-2.5 rounded border border-outline-variant/30 focus:border-primary-container focus:outline-none transition-colors"
+                />
+              </div>
+              <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+                <button onClick={() => setFilterCategory('all')} className={`px-4 py-2 rounded font-mono text-xs uppercase tracking-wider whitespace-nowrap transition-all ${filterCategory === 'all' ? 'bg-primary-container text-background font-bold shadow-[0_0_15px_rgba(0,240,255,0.3)]' : 'bg-surface-container text-on-surface hover:bg-surface-container-high'}`}>Global</button>
+                <button onClick={() => setFilterCategory('minecraft')} className={`px-4 py-2 rounded font-mono text-xs uppercase tracking-wider whitespace-nowrap transition-all ${filterCategory === 'minecraft' ? 'bg-tertiary-fixed text-background font-bold shadow-[0_0_15px_rgba(200,255,100,0.3)]' : 'bg-surface-container text-on-surface hover:bg-surface-container-high'}`}>Minecraft</button>
+                <button onClick={() => setFilterCategory('clash')} className={`px-4 py-2 rounded font-mono text-xs uppercase tracking-wider whitespace-nowrap transition-all ${filterCategory === 'clash' ? 'bg-secondary-fixed text-background font-bold shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'bg-surface-container text-on-surface hover:bg-surface-container-high'}`}>Clash Royale</button>
+                <button onClick={() => setFilterCategory('fifa')} className={`px-4 py-2 rounded font-mono text-xs uppercase tracking-wider whitespace-nowrap transition-all ${filterCategory === 'fifa' ? 'bg-primary-fixed text-background font-bold shadow-[0_0_15px_rgba(100,150,255,0.3)]' : 'bg-surface-container text-on-surface hover:bg-surface-container-high'}`}>FIFA / FC</button>
+              </div>
+            </div>
             <div className="w-full max-w-5xl bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden">
               <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
@@ -360,10 +387,9 @@ export default function Home() {
                     <tr><td colSpan={6} className="py-8 text-center text-outline">No se encontraron jugadores.</td></tr>
                   ) : (
                     paginatedPlayers.map((player, idx) => {
-                      const globalIdx = (currentPage - 1) * ITEMS_PER_PAGE + idx + 1;
                       return (
                         <tr key={player.id} className="hover:bg-surface-container cursor-pointer">
-                          <td className="py-3 px-4 text-center font-bold">{globalIdx}</td>
+                          <td className="py-3 px-4 text-center font-bold text-on-surface-variant">#{player.rank}</td>
                           <td className="py-3 px-4">
                             <div className="font-bold text-on-surface">{player.name}</div>
                             <div className="font-mono text-[10px] text-outline uppercase">{player.gamertag}</div>
