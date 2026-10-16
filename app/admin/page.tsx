@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 
 const ITEMS_PER_PAGE = 7;
@@ -48,8 +48,23 @@ export default function AdminPanel() {
     return () => { supabase.removeChannel(playersSub); };
   }, [isAuthenticated]);
 
-  const totalPages = Math.ceil(registros.length / ITEMS_PER_PAGE);
-  const paginatedRegistros = registros.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Regresa a la página 1 cuando escribes algo en el buscador
+  useEffect(() => { setCurrentPage(1); }, [searchQuery]);
+
+  const filteredRegistros = useMemo(() => {
+    if (searchQuery.trim() === '') return registros;
+    const q = searchQuery.toLowerCase();
+    return registros.filter(p => 
+      p.name.toLowerCase().includes(q) || 
+      p.gamertag.toLowerCase().includes(q) || 
+      p.account.includes(q)
+    );
+  }, [registros, searchQuery]);
+
+  const totalPages = Math.ceil(filteredRegistros.length / ITEMS_PER_PAGE);
+  const paginatedRegistros = filteredRegistros.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,6 +173,18 @@ export default function AdminPanel() {
             <span className="material-symbols-outlined text-primary-container text-sm animate-bounce">touch_app</span>
             <span className="font-mono text-[10px] text-primary-container uppercase tracking-wider font-bold">Toca a un jugador para editar</span>
           </div>
+        </div>
+
+        {/* BARRA DE BÚSQUEDA DEL ADMIN */}
+        <div className="mb-6 relative w-full sm:w-96">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+          <input 
+            type="text" 
+            placeholder="Buscar por nombre, gamertag o cuenta..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-surface-container-lowest text-on-surface pl-10 pr-4 py-3 rounded-lg border border-outline-variant/30 focus:border-primary-container focus:outline-none transition-colors shadow-sm"
+          />
         </div>
 
         {/* TABLA PRINCIPAL */}
