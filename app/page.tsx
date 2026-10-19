@@ -2,28 +2,23 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const ITEMS_PER_PAGE = 7;
 
 export default function Home() {
   const [players, setPlayers] = useState<any[]>([]);
-  const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
-  const [areGamesRevealed, setAreGamesRevealed] = useState(false); // NUEVO ESTADO
+  const [areGamesRevealed, setAreGamesRevealed] = useState(false);
   
   const [filterCategory, setFilterCategory] = useState<'all' | 'minecraft' | 'clash' | 'fifa'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showRules, setShowRules] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [selectedPlayer, setSelectedPlayer] = useState<any | null>(null);
-  const [showPlayerModal, setShowPlayerModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: settingsData } = await supabase.from('settings').select('is_registration_open, are_games_revealed').eq('id', 1).single();
+      const { data: settingsData } = await supabase.from('settings').select('are_games_revealed').eq('id', 1).single();
       if (settingsData) {
-        setIsRegistrationOpen(settingsData.is_registration_open);
         setAreGamesRevealed(settingsData.are_games_revealed);
       }
 
@@ -35,7 +30,6 @@ export default function Home() {
 
     const settingsSub = supabase.channel('settings-changes')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'settings' }, (payload) => {
-        setIsRegistrationOpen(payload.new.is_registration_open);
         setAreGamesRevealed(payload.new.are_games_revealed);
       }).subscribe();
 
@@ -53,19 +47,16 @@ export default function Home() {
 
   useEffect(() => { setCurrentPage(1); }, [searchQuery, filterCategory]);
 
-const { podiumPlayers, filteredPlayers } = useMemo(() => {
-    // 1. Ordenamos por la categoría seleccionada
+  const { podiumPlayers, filteredPlayers } = useMemo(() => {
     let sorted = [...players];
     if (filterCategory === 'minecraft') sorted.sort((a, b) => b.mc - a.mc);
     else if (filterCategory === 'clash') sorted.sort((a, b) => b.cr - a.cr);
     else if (filterCategory === 'fifa') sorted.sort((a, b) => b.fifa - a.fifa);
     else sorted.sort((a, b) => b.total - a.total);
 
-    // 2. Asignamos la posición real (rango) a cada jugador y aseguramos el Podio
     const ranked = sorted.map((player, index) => ({ ...player, rank: index + 1 }));
     const podium = ranked.slice(0, 3);
 
-    // 3. Aplicamos la búsqueda solo para la tabla
     let filtered = ranked;
     if (searchQuery.trim() !== '') {
       const q = searchQuery.toLowerCase();
@@ -78,49 +69,6 @@ const { podiumPlayers, filteredPlayers } = useMemo(() => {
   const top3 = podiumPlayers;
   const totalPages = Math.ceil(filteredPlayers.length / ITEMS_PER_PAGE);
   const paginatedPlayers = filteredPlayers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (isSubmitting) return; // Evita clics dobles
-    setIsSubmitting(true);    // Bloquea el botón
-    
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-    
-    const whatsapp = formData.get('whatsapp') as string;
-    const account = formData.get('accountNumber') as string;
-
-    if (whatsapp.length !== 10 || !/^\d{10}$/.test(whatsapp)) {
-      alert('El número de WhatsApp debe tener exactamente 10 dígitos numéricos.');
-      setIsSubmitting(false); // Libera el botón si hay error
-      return;
-    }
-
-    const { data: existingUser } = await supabase.from('players').select('id').eq('account', account);
-    if (existingUser && existingUser.length > 0) {
-      alert(`La cuenta UAEH ${account} ya está registrada en el torneo.`);
-      setIsSubmitting(false); // Libera el botón si hay error
-      return;
-    }
-
-    const { error } = await supabase.from('players').insert([{
-      name: formData.get('fullName'),
-      semester: formData.get('semester'),
-      account: account,
-      whatsapp: whatsapp,
-      gamertag: formData.get('gamertag'),
-      mc: 0, cr: 0, fifa: 0, total: 0
-    }]);
-
-    if (error) {
-      alert('Hubo un error al registrarte. (Verifica que tu cuenta no esté registrada ya).');
-      setIsSubmitting(false); // Libera el botón si hay error
-      return;
-    }
-
-    setShowSuccess(true);
-    form.reset();
-    setIsSubmitting(false); // Libera el botón al terminar
-  };
 
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -139,49 +87,68 @@ const { podiumPlayers, filteredPlayers } = useMemo(() => {
           </div>
           <nav className="hidden lg:flex items-center gap-2 p-1 bg-surface-container-lowest/80 backdrop-blur-md rounded-lg shadow-inner border border-outline-variant/20">
             <button onClick={() => scrollToSection('inicio')} className="font-mono text-xs uppercase tracking-wider px-4 py-2 hover:bg-surface-container transition-all text-on-surface rounded">Inicio</button>
-            <button onClick={() => scrollToSection('registro')} className="font-mono text-xs uppercase tracking-wider px-4 py-2 hover:bg-surface-container transition-all text-on-surface rounded">Registro</button>
             {areGamesRevealed && <button onClick={() => scrollToSection('clasificacion')} className="font-mono text-xs uppercase tracking-wider px-4 py-2 hover:bg-surface-container transition-all text-on-surface rounded">Clasificación</button>}
+            <button onClick={() => setShowRules(true)} className="font-mono text-xs uppercase tracking-wider px-4 py-2 hover:bg-surface-container transition-all text-on-surface rounded">Reglas</button>
           </nav>
         </div>
       </header>
 
       {/* PASARELA DE LOGOS INSTITUCIONALES (SEAMLESS LOOP) */}
       <div className="w-full overflow-hidden border-b border-primary-container/30 bg-surface-container-lowest py-3 flex relative z-10 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-        {/* Contenedor Flex para alinear las dos pistas idénticas */}
         <div className="flex w-max hover:pause">
-          
-          {/* Pista 1 */}
           <div className="animate-marquee flex gap-16 items-center px-8 shrink-0">
             {[1, 2, 3].map((group) => (
               <div key={`p1-${group}`} className="flex gap-16 items-center shrink-0">
-                <img src="/logos/logo-ieee.png" alt="IEEE ESTL" className="h-14 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
+                <img src="/logos/logo-ieee.png" alt="IEEE ESTL" className="h-12 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
                 <img src="/logos/logo-wieeek.png" alt="WIEEEK" className="h-12 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
-                <img src="/logos/logo-uaeh.png" alt="UAEH" className="h-10 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
+                <img src="/logos/logo-uaeh.png" alt="UAEH" className="h-12 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
               </div>
             ))}
           </div>
-
-          {/* Pista 2 (Clon exacto para el loop infinito perfecto) */}
           <div className="animate-marquee flex gap-16 items-center px-8 shrink-0">
             {[1, 2, 3].map((group) => (
               <div key={`p2-${group}`} className="flex gap-16 items-center shrink-0">
-                <img src="/logos/logo-ieee.png" alt="IEEE ESTL" className="h-14 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
+                <img src="/logos/logo-ieee.png" alt="IEEE ESTL" className="h-12 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
                 <img src="/logos/logo-wieeek.png" alt="WIEEEK" className="h-12 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
-                <img src="/logos/logo-uaeh.png" alt="UAEH" className="h-10 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
+                <img src="/logos/logo-uaeh.png" alt="UAEH" className="h-12 object-contain grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100" />
               </div>
             ))}
           </div>
-
         </div>
       </div>
 
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[720px] h-[340px] bg-secondary-container/20 rounded-full blur-[140px] pointer-events-none"></div>
+      {/* BACKGROUND AURORA LÍQUIDA (VERSIÓN CORREGIDA) */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-background">
+        
+        {/* Orbe Cian (Flotando) */}
+        <motion.div 
+          animate={{ 
+            x: ["-20%", "20%", "-10%", "-20%"],
+            y: ["-10%", "10%", "-20%", "-10%"],
+          }} 
+          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -top-[20%] -left-[10%] w-[70vw] h-[70vw] bg-primary-container/30 rounded-full blur-[140px]"
+        />
+        
+        {/* Orbe Morado/Oscuro (Flotando en sentido contrario) */}
+        <motion.div 
+          animate={{ 
+            x: ["20%", "-20%", "10%", "20%"],
+            y: ["20%", "-10%", "10%", "20%"],
+          }} 
+          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-[20%] -right-[10%] w-[80vw] h-[80vw] bg-secondary-fixed/20 rounded-full blur-[150px]"
+        />
+        
+        {/* Capa de cristal para suavizar y mezclar los colores */}
+        <div className="absolute inset-0 bg-background/40 backdrop-blur-[60px]"></div>
+      </div>
 
       {/* HERO SECTION */}
-      <section id="inicio" className="relative w-full px-4 md:px-10 py-16 flex flex-col items-center text-center scroll-mt-24">
+      <section id="inicio" className="relative z-10 w-full px-4 md:px-10 py-16 flex flex-col items-center text-center scroll-mt-24">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-surface-container-high/80 backdrop-blur-md shadow-[0_0_16px_rgba(0,240,255,0.2)] border border-outline-variant/30 mb-8">
-          <span className="w-2.5 h-2.5 rounded-full bg-tertiary-container animate-ping"></span>
-          <span className="font-mono text-[10px] uppercase tracking-wider text-primary-container">Inscripciones {isRegistrationOpen ? 'Abiertas' : 'Cerradas'} • Fase Beta</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-secondary-fixed animate-ping"></span>
+          <span className="font-mono text-[10px] uppercase tracking-wider text-primary-container">Cupo Lleno • Torneo en Curso</span>
         </div>
         
         <div className="relative max-w-4xl flex flex-col items-center">
@@ -190,11 +157,10 @@ const { podiumPlayers, filteredPlayers } = useMemo(() => {
           </h1>
         </div>
 
-        {/* TARJETAS DE JUEGOS (Censuradas o Reveladas) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-3xl mt-12">
+        {/* TARJETAS DE JUEGOS */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-3xl mt-12 mb-8">
           {areGamesRevealed ? (
             <>
-              {/* Juegos Revelados */}
               <div className="flex items-center justify-center gap-3 p-4 rounded-lg bg-surface-container-low/90 border border-outline-variant/20 shadow-lg group">
                 <div className="w-10 h-10 rounded flex items-center justify-center bg-tertiary-container/15 text-tertiary-fixed"><span className="material-symbols-outlined">grid_view</span></div>
                 <div className="text-left">
@@ -219,122 +185,71 @@ const { podiumPlayers, filteredPlayers } = useMemo(() => {
             </>
           ) : (
             <>
-              {/* Juegos Censurados */}
               {[1, 2, 3].map((num) => (
                 <div key={num} className="flex items-center justify-center gap-3 p-4 rounded-lg bg-surface-container-highest/50 border border-outline-variant/20 relative overflow-hidden">
                   <div className="absolute inset-0 backdrop-blur-[2px]"></div>
                   <div className="w-10 h-10 rounded flex items-center justify-center bg-surface-container text-outline relative z-10"><span className="material-symbols-outlined">lock</span></div>
                   <div className="text-left relative z-10">
                     <span className="block font-mono text-[10px] uppercase text-outline font-semibold">Clasificado</span>
-                    <span className="block font-display text-lg text-on-surface-variant blur-[3px] select-none">Juego{num}</span>
+                    <span className="block font-display text-lg text-on-surface-variant blur-[3px] select-none">Juego {num}</span>
                   </div>
                 </div>
               ))}
             </>
           )}
         </div>
-
-        <div className="mt-12 flex flex-col sm:flex-row items-center gap-4">
-          <button 
-            disabled={!isRegistrationOpen}
-            onClick={() => isRegistrationOpen && scrollToSection('registro')} 
-            className={`inline-flex items-center gap-2 px-10 py-4 rounded font-display text-lg uppercase tracking-wider font-bold transition-all ${isRegistrationOpen ? 'bg-primary-container text-background shadow-[0_0_28px_rgba(0,240,255,0.5)] hover:shadow-[0_0_40px_rgba(0,240,255,0.8)] hover:scale-105 cursor-pointer' : 'bg-surface-container-high text-outline cursor-not-allowed opacity-80'}`}
-          >
-            <span>{isRegistrationOpen ? 'Inscribirse Ahora' : 'Se abrirá pronto'}</span>
-            <span className="material-symbols-outlined font-bold">{isRegistrationOpen ? 'arrow_downward' : 'lock'}</span>
-          </button>
-        </div>
       </section>
 
-      {/* REGISTRATION SECTION */}
-      <section id="registro" className="w-full px-4 md:px-10 py-16 flex flex-col items-center scroll-mt-24 relative z-10">
-        <h2 className="text-3xl md:text-4xl font-display uppercase tracking-tight text-on-surface mb-8">
-          Registro de Participantes
-        </h2>
-        <div className="w-full max-w-xl bg-surface-container/85 backdrop-blur-xl rounded-xl p-6 md:p-10 border border-outline-variant/30 shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
-         <div className="mb-6 p-4 rounded bg-surface-container-highest/60 border border-secondary-container/40 flex items-start gap-3">
-            <span className="material-symbols-outlined text-secondary-fixed mt-0.5">local_fire_department</span>
-            <div className="flex flex-col">
-              <span className="text-secondary-fixed font-bold tracking-tight">Cupo limitado a 30 participantes</span>
-              <span className="text-sm text-on-surface-variant mt-1">Quedan <strong className="text-primary-container font-mono">{Math.max(0, 30 - players.length)}</strong> plazas disponibles.</span>
-            </div>
-          </div>
-          {isRegistrationOpen ? (
-            <form onSubmit={handleRegister} className="flex flex-col gap-5">
-              <div className="flex flex-col gap-1">
-                <label className="font-mono text-xs uppercase text-on-surface-variant">Nombre completo *</label>
-                <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute left-3 text-outline text-[18px]">person</span>
-                  <input required name="fullName" type="text" placeholder="Ej. Alex Rivera" className="w-full bg-surface-container-lowest text-on-surface pl-10 pr-4 py-2.5 rounded border border-outline-variant/30 focus:border-primary-container" />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <label className="font-mono text-xs uppercase text-on-surface-variant">Semestre *</label>
-                  <div className="relative flex items-center">
-                    <span className="material-symbols-outlined absolute left-3 text-outline text-[18px]">school</span>
-                    <select required name="semester" defaultValue="" className="w-full bg-surface-container-lowest text-on-surface pl-10 pr-4 py-2.5 rounded border border-outline-variant/30 appearance-none">
-                    <option value="" disabled>Selecciona tu grupo</option>
-                    {['101', '102', '301', '302', '501', '502', '701', '702', '901'].map(n => (
-                      <option key={n} value={n}>Grupo {n}</option>
-                    ))}
-                  </select>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="font-mono text-xs uppercase text-on-surface-variant">Cuenta UAEH *</label>
-                  <div className="relative flex items-center">
-                    <span className="material-symbols-outlined absolute left-3 text-outline text-[18px]">badge</span>
-                    <input required name="accountNumber" type="text" pattern="\d+" placeholder="Ej. 321456" className="w-full bg-surface-container-lowest text-on-surface pl-10 pr-4 py-2.5 rounded border border-outline-variant/30" />
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="font-mono text-xs uppercase text-on-surface-variant">WhatsApp (10 Dígitos) *</label>
-                <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute left-3 text-outline text-[18px]">chat</span>
-                  <input required name="whatsapp" type="tel" pattern="\d{10}" maxLength={10} placeholder="Ej. 7731234567" className="w-full bg-surface-container-lowest text-on-surface pl-10 pr-4 py-2.5 rounded border border-outline-variant/30" />
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="font-mono text-xs uppercase text-on-surface-variant">Gamertag / ID *</label>
-                <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute left-3 text-outline text-[18px]">videogame_asset</span>
-                  <input required name="gamertag" type="text" placeholder="Ej. Shadow_ESTL #7821" className="w-full bg-surface-container-lowest text-on-surface font-mono pl-10 pr-4 py-2.5 rounded border border-outline-variant/30" />
-                </div>
-              </div>
-              <button 
-                type="submit" 
-                disabled={isSubmitting}
-                className={`mt-4 w-full py-3 rounded font-display text-lg uppercase font-bold transition-all ${isSubmitting ? 'bg-surface-container text-outline cursor-not-allowed' : 'bg-primary-container text-background'}`}
-              >
-                {isSubmitting ? 'Inscribiendo...' : 'Inscribirme'}
-              </button>
-            </form>
-          ) : (
-            <div className="py-12 flex flex-col items-center justify-center text-center bg-surface-container-lowest/50 rounded-lg">
-              <span className="material-symbols-outlined text-3xl text-outline mb-4">lock</span>
-              <h3 className="text-2xl font-bold text-on-surface uppercase tracking-tight mb-2">Inscripciones Cerradas</h3>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* CLASIFICACION */}
-      <section id="clasificacion" className="w-full px-4 md:px-10 py-16 flex flex-col items-center">
+      {/* CLASIFICACION ANIMADA */}
+      <section id="clasificacion" className="relative z-10 w-full px-4 md:px-10 py-16 flex flex-col items-center">
         {areGamesRevealed ? (
           <>
-            <h2 className="text-3xl md:text-4xl font-display uppercase tracking-tight text-on-surface mb-8 text-center">Tabla de Clasificación</h2>
-            {/* PODIO TOP 3 */}
+            <h2 className="text-3xl md:text-4xl font-display uppercase tracking-tight text-on-surface mb-12 text-center">Tabla de Clasificación</h2>
+            
+            {/* PODIO TOP 3 CON ANIMACIONES DE FLOTACIÓN */}
             {top3.length >= 3 && (
-              <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <div className="order-2 md:order-1 bg-surface-container-low p-6 rounded-xl flex flex-col items-center text-center shadow-lg transform md:translate-y-4 border border-outline-variant/30 transition-all">
+              <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 pt-8 pb-8 px-4">
+                
+                {/* SUBCAMPEÓN (#2) */}
+                <motion.div 
+                  initial={{ opacity: 0, x: -50 }} 
+                  animate={{ opacity: 1, x: 0, y: [0, -8, 0] }} 
+                  transition={{ 
+                    opacity: { duration: 0.5, delay: 0.2 },
+                    x: { duration: 0.5, delay: 0.2 },
+                    y: { duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.5 }
+                  }}
+                  whileHover={{ scale: 1.02 }}
+                  className="order-2 md:order-1 bg-surface-container-low p-6 rounded-xl flex flex-col items-center text-center border border-outline-variant/30 shadow-[0_10px_20px_rgba(0,0,0,0.2)]"
+                >
                   <div className="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface mb-2 font-bold text-xl">#2</div>
                   <span className="text-xl font-bold text-on-surface">{top3[1].name}</span>
                   <span className="font-mono text-[10px] text-outline uppercase tracking-wider mt-1">Subcampeón</span>
                   <span className="text-3xl font-bold text-on-surface mt-2">{filterCategory === 'minecraft' ? top3[1].mc : filterCategory === 'clash' ? top3[1].cr : filterCategory === 'fifa' ? top3[1].fifa : top3[1].total} <span className="text-sm text-outline">PTS</span></span>
-                </div>
-                <div className="order-1 md:order-2 bg-surface-container p-6 rounded-xl flex flex-col items-center text-center shadow-[0_0_30px_rgba(255,215,0,0.25)] relative border border-secondary-fixed/40 hover:scale-[1.02] transition-transform">
+                </motion.div>
+                
+                {/* LÍDER ABSOLUTO (#1) */}
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.8 }} 
+                  animate={{ 
+                    opacity: 1, 
+                    scale: 1, 
+                    y: [0, -12, 0],
+                    boxShadow: [
+                      "0px 5px 20px rgba(255,215,0,0.15)",
+                      "0px 15px 40px rgba(255,215,0,0.4)",
+                      "0px 5px 20px rgba(255,215,0,0.15)"
+                    ]
+                  }} 
+                  transition={{ 
+                    opacity: { duration: 0.5 },
+                    scale: { type: "spring", bounce: 0.5, duration: 0.8 },
+                    y: { duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.2 },
+                    boxShadow: { duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.2 }
+                  }}
+                  whileHover={{ scale: 1.05 }}
+                  className="order-1 md:order-2 bg-surface-container p-6 rounded-xl flex flex-col items-center text-center relative border border-secondary-fixed/40 z-10"
+                >
                   <div className="absolute -top-3 px-4 py-1 rounded-full bg-secondary-fixed text-background font-mono text-[10px] font-bold uppercase tracking-widest shadow">Líder Absoluto</div>
                   <div className="w-14 h-14 rounded-full bg-secondary-fixed/20 text-secondary-fixed flex items-center justify-center mb-2 shadow-[0_0_16px_rgba(255,215,0,0.5)]">
                     <span className="material-symbols-outlined text-[32px]" style={{ fontVariationSettings: "'FILL' 1" }}>military_tech</span>
@@ -342,15 +257,29 @@ const { podiumPlayers, filteredPlayers } = useMemo(() => {
                   <span className="text-2xl font-bold text-on-surface">{top3[0].name}</span>
                   <span className="font-mono text-xs text-secondary-fixed uppercase tracking-wider font-semibold mt-1">1° Lugar General</span>
                   <span className="text-5xl font-bold text-primary-fixed mt-2">{filterCategory === 'minecraft' ? top3[0].mc : filterCategory === 'clash' ? top3[0].cr : filterCategory === 'fifa' ? top3[0].fifa : top3[0].total} <span className="text-sm text-primary-container">PTS</span></span>
-                </div>
-                <div className="order-3 bg-surface-container-low p-6 rounded-xl flex flex-col items-center text-center shadow-lg transform md:translate-y-6 border border-outline-variant/30 transition-all">
+                </motion.div>
+                
+                {/* TERCER LUGAR (#3) */}
+                <motion.div 
+                  initial={{ opacity: 0, x: 50 }} 
+                  animate={{ opacity: 1, x: 0, y: [0, -6, 0] }} 
+                  transition={{ 
+                    opacity: { duration: 0.5, delay: 0.4 },
+                    x: { duration: 0.5, delay: 0.4 },
+                    y: { duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.7 }
+                  }}
+                  whileHover={{ scale: 1.02 }}
+                  className="order-3 bg-surface-container-low p-6 rounded-xl flex flex-col items-center text-center border border-outline-variant/30 shadow-[0_10px_20px_rgba(0,0,0,0.2)]"
+                >
                   <div className="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface mb-2 font-bold text-xl">#3</div>
                   <span className="text-xl font-bold text-on-surface">{top3[2].name}</span>
                   <span className="font-mono text-[10px] text-outline uppercase tracking-wider mt-1">3er Lugar</span>
                   <span className="text-3xl font-bold text-on-surface mt-2">{filterCategory === 'minecraft' ? top3[2].mc : filterCategory === 'clash' ? top3[2].cr : filterCategory === 'fifa' ? top3[2].fifa : top3[2].total} <span className="text-sm text-outline">PTS</span></span>
-                </div>
+                </motion.div>
+                
               </div>
             )}
+
             {/* CONTROLES DE BÚSQUEDA Y FILTROS */}
             <div className="w-full max-w-5xl flex flex-col md:flex-row gap-4 justify-between items-center mb-6">
               <div className="relative w-full md:w-96">
@@ -370,6 +299,7 @@ const { podiumPlayers, filteredPlayers } = useMemo(() => {
                 <button onClick={() => setFilterCategory('fifa')} className={`px-4 py-2 rounded font-mono text-xs uppercase tracking-wider whitespace-nowrap transition-all ${filterCategory === 'fifa' ? 'bg-primary-fixed text-background font-bold shadow-[0_0_15px_rgba(100,150,255,0.3)]' : 'bg-surface-container text-on-surface hover:bg-surface-container-high'}`}>FIFA / FC</button>
               </div>
             </div>
+
             <div className="w-full max-w-5xl bg-surface-container-lowest rounded-xl border border-outline-variant/30 overflow-hidden">
               <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
@@ -383,12 +313,26 @@ const { podiumPlayers, filteredPlayers } = useMemo(() => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-container">
-                  {paginatedPlayers.length === 0 ? (
-                    <tr><td colSpan={6} className="py-8 text-center text-outline">No se encontraron jugadores.</td></tr>
-                  ) : (
-                    paginatedPlayers.map((player, idx) => {
-                      return (
-                        <tr key={player.id} className="hover:bg-surface-container cursor-pointer">
+                  <AnimatePresence mode="popLayout">
+                    {paginatedPlayers.length === 0 ? (
+                      <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <td colSpan={6} className="py-8 text-center text-outline">No se encontraron jugadores.</td>
+                      </motion.tr>
+                    ) : (
+                      paginatedPlayers.map((player, idx) => (
+                        <motion.tr 
+                          key={player.id} 
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          whileHover={{ 
+                            scale: 1.01, 
+                            backgroundColor: "rgba(0, 240, 255, 0.05)",
+                            boxShadow: "inset 4px 0 0 rgba(0, 240, 255, 1)"
+                          }}
+                          transition={{ duration: 0.2, delay: idx * 0.03 }}
+                          className="cursor-pointer bg-surface-container-lowest border-b border-surface-container transition-all"
+                        >
                           <td className="py-3 px-4 text-center font-bold text-on-surface-variant">#{player.rank}</td>
                           <td className="py-3 px-4">
                             <div className="font-bold text-on-surface">{player.name}</div>
@@ -398,10 +342,10 @@ const { podiumPlayers, filteredPlayers } = useMemo(() => {
                           <td className="py-3 px-4 text-right">{player.cr} pts</td>
                           <td className="py-3 px-4 text-right">{player.fifa} pts</td>
                           <td className="py-3 px-4 text-right font-bold text-lg text-primary-container">{player.total} pts</td>
-                        </tr>
-                      )
-                    })
-                  )}
+                        </motion.tr>
+                      ))
+                    )}
+                  </AnimatePresence>
                 </tbody>
               </table>
               {totalPages > 1 && (
@@ -414,7 +358,7 @@ const { podiumPlayers, filteredPlayers } = useMemo(() => {
             </div>
           </>
         ) : (
-          <div className="w-full max-w-3xl py-20 flex flex-col items-center justify-center text-center bg-surface-container-lowest/50 border border-outline-variant/30 rounded-2xl">
+          <div className="w-full max-w-3xl py-20 flex flex-col items-center justify-center text-center bg-surface-container-lowest/50 border border-outline-variant/30 rounded-2xl mt-12">
             <span className="material-symbols-outlined text-5xl text-outline mb-4">visibility_off</span>
             <h3 className="text-2xl font-bold text-on-surface uppercase tracking-tight mb-2">Clasificación Oculta</h3>
             <p className="text-on-surface-variant max-w-md">Para mantener la intriga del torneo, la tabla de posiciones se habilitará una vez que los juegos oficiales sean revelados.</p>
@@ -422,38 +366,22 @@ const { podiumPlayers, filteredPlayers } = useMemo(() => {
         )}
       </section>
 
-      {showSuccess && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4">
-          <div className="bg-surface-container p-8 rounded-xl max-w-md w-full text-center border border-primary-container/40 shadow-[0_0_36px_rgba(0,240,255,0.4)]">
-            <span className="material-symbols-outlined text-6xl text-primary-container mb-4">check_circle</span>
-            <h3 className="text-2xl font-bold mb-2">¡Registro Exitoso!</h3>
-            <button onClick={() => setShowSuccess(false)} className="mt-4 w-full py-3 bg-primary-container text-background font-bold uppercase rounded">Cerrar</button>
-          </div>
-        </div>
-      )}
-
       {/* FOOTER COMPLETO */}
       <footer className="w-full border-t border-outline-variant/30 bg-surface-container-lowest py-10 mt-16 relative z-10">
         <div className="max-w-7xl mx-auto px-4 md:px-10 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
-          
-          {/* COLUMNA IZQUIERDA: Marca y Redes */}
           <div className="flex flex-col items-center md:items-start">
             <span className="font-display text-xl font-bold text-on-surface uppercase tracking-wider">WIEEEK 2026</span>
             <span className="font-mono text-[10px] text-outline uppercase tracking-widest mt-1">Torneo E-Sports Oficial</span>
-            
-            {/* AQUÍ PUEDES AGREGAR TUS REDES SOCIALES */}
             <div className="flex gap-4 mt-4">
-              <a href="https://www.instagram.com/uaehestlieee/?utm_source=ig_web_button_share_sheet" target="_blank"  className="text-outline hover:text-primary-container transition-colors" title="Instagram">
+              <a href="#" className="text-outline hover:text-primary-container transition-colors" title="Instagram">
                 <span className="material-symbols-outlined text-xl">photo_camera</span>
               </a>
-              <a href="#" className="text-outline hover:text-primary-container transition-colors" title="Instagram">
+              <a href="#" className="text-outline hover:text-primary-container transition-colors" title="Facebook">
                 <span className="material-symbols-outlined text-xl">thumb_up</span>
               </a>
-              
             </div>
           </div>
           
-          {/* COLUMNA CENTRAL: Organizado por (CON ENLACE) */}
           <div className="flex flex-col items-center">
             <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Organizado por</span>
             <a 
@@ -462,29 +390,22 @@ const { podiumPlayers, filteredPlayers } = useMemo(() => {
               rel="noopener noreferrer"
               className="flex items-center gap-2 group hover:scale-105 transition-all cursor-pointer"
             >
-              <span className="material-symbols-outlined text-primary-container text-[22px] group-hover:text-primary-fixed">school</span>
+              <span className="material-symbols-outlined text-primary-container text-[22px] group-hover:text-primary-fixed">bolt</span>
               <span className="font-bold text-primary-container uppercase tracking-wider text-sm group-hover:text-primary-fixed group-hover:underline underline-offset-4">
                 Rama Estudiantil IEEE UAEH ESTL
               </span>
             </a>
-            
-            {/* AQUÍ PUEDES AGREGAR MÁS ORGANIZADORES O PATROCINADORES */}
-            
           </div>
 
-          {/* COLUMNA DERECHA: Créditos y Políticas */}
           <div className="flex flex-col items-center md:items-end">
             <span className="font-mono text-[10px] text-outline uppercase tracking-widest flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">terminal</span> Desarrollado por Tin :*
+              <span className="material-symbols-outlined text-[14px]">terminal</span> Desarrollado con Next.js
             </span>
             <span className="font-mono text-[10px] text-outline uppercase tracking-widest mt-1">© 2026 Todos los derechos reservados</span>
-            
-            {/* AQUÍ PUEDES AGREGAR LINKS DE REGLAMENTOS O CONTACTO */}
             <button onClick={() => setShowRules(true)} className="font-mono text-[10px] text-outline/60 uppercase tracking-widest mt-3 hover:text-primary-container transition-colors cursor-pointer">
               Ver Reglamento del Torneo
             </button>
           </div>
-
         </div>
       </footer>
     </main>
