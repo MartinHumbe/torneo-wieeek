@@ -48,19 +48,30 @@ export default function Home() {
   useEffect(() => { setCurrentPage(1); }, [searchQuery, filterCategory]);
 
   const { podiumPlayers, filteredPlayers } = useMemo(() => {
+    // 1. Ordenamos por la categoría seleccionada
     let sorted = [...players];
     if (filterCategory === 'minecraft') sorted.sort((a, b) => b.mc - a.mc);
     else if (filterCategory === 'clash') sorted.sort((a, b) => b.cr - a.cr);
     else if (filterCategory === 'fifa') sorted.sort((a, b) => b.fifa - a.fifa);
     else sorted.sort((a, b) => b.total - a.total);
 
+    // 2. Asignamos la posición real (rango) a cada jugador y aseguramos el Podio
     const ranked = sorted.map((player, index) => ({ ...player, rank: index + 1 }));
     const podium = ranked.slice(0, 3);
 
+    // 3. Filtro de búsqueda a prueba de errores y acentos
     let filtered = ranked;
     if (searchQuery.trim() !== '') {
-      const q = searchQuery.toLowerCase();
-      filtered = ranked.filter(p => p.name.toLowerCase().includes(q) || p.gamertag.toLowerCase().includes(q));
+      // Convertimos a minúsculas y eliminamos acentos de la búsqueda
+      const q = searchQuery.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      
+      filtered = ranked.filter(p => {
+        // Protegemos contra nulos, pasamos a minúsculas y quitamos acentos
+        const nameSafe = p.name ? p.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+        const tagSafe = p.gamertag ? p.gamertag.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+        
+        return nameSafe.includes(q) || tagSafe.includes(q);
+      });
     }
 
     return { podiumPlayers: podium, filteredPlayers: filtered };
@@ -313,7 +324,7 @@ export default function Home() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-container">
-                  <AnimatePresence mode="popLayout">
+                  <AnimatePresence mode="wait">
                     {paginatedPlayers.length === 0 ? (
                       <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                         <td colSpan={6} className="py-8 text-center text-outline">No se encontraron jugadores.</td>
