@@ -14,6 +14,24 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showRules, setShowRules] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [tournamentView, setTournamentView] = useState<'calendario' | 'llaves'>('calendario');
+  const [filterGroup, setFilterGroup] = useState<'all' | 'A' | 'B' | 'C'>('all');
+// Estados del Torneo (Agréga estos a los que ya tienes)
+  const [matches, setMatches] = useState<any[]>([]);
+  const [bracketGame, setBracketGame] = useState('fc27');
+  const [bracketGroup, setBracketGroup] = useState('A');
+
+  // Carga de Llaves en Tiempo "Real"
+  useEffect(() => {
+    const fetchMatches = async () => {
+      const { data } = await supabase.from('matches').select('*').order('orden', { ascending: true });
+      if (data) setMatches(data);
+    };
+    
+    fetchMatches(); // Carga inicial
+    const interval = setInterval(fetchMatches, 10000); // Se actualiza solo cada 10 segundos
+    return () => clearInterval(interval); // Limpia el intervalo al salir
+  }, []);  
 
   useEffect(() => {
     const fetchData = async () => {
@@ -59,23 +77,24 @@ export default function Home() {
     const ranked = sorted.map((player, index) => ({ ...player, rank: index + 1 }));
     const podium = ranked.slice(0, 3);
 
-    // 3. Filtro de búsqueda a prueba de errores y acentos
+    // 3. Filtros combinados (Grupo y Búsqueda)
     let filtered = ranked;
+    
+    if (filterGroup !== 'all') {
+      filtered = filtered.filter(p => p.grupo === filterGroup);
+    }
+
     if (searchQuery.trim() !== '') {
-      // Convertimos a minúsculas y eliminamos acentos de la búsqueda
       const q = searchQuery.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      
-      filtered = ranked.filter(p => {
-        // Protegemos contra nulos, pasamos a minúsculas y quitamos acentos
+      filtered = filtered.filter(p => {
         const nameSafe = p.name ? p.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
         const tagSafe = p.gamertag ? p.gamertag.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
-        
         return nameSafe.includes(q) || tagSafe.includes(q);
       });
     }
 
     return { podiumPlayers: podium, filteredPlayers: filtered };
-  }, [players, filterCategory, searchQuery]);
+  }, [players, filterCategory, filterGroup, searchQuery]); // <-- No olvides agregar filterGroup aquí
 
   const top3 = podiumPlayers;
   const totalPages = Math.ceil(filteredPlayers.length / ITEMS_PER_PAGE);
@@ -99,6 +118,7 @@ export default function Home() {
           <nav className="hidden lg:flex items-center gap-2 p-1 bg-surface-container-lowest/80 backdrop-blur-md rounded-lg shadow-inner border border-outline-variant/20">
             <button onClick={() => scrollToSection('inicio')} className="font-mono text-xs uppercase tracking-wider px-4 py-2 hover:bg-surface-container transition-all text-on-surface rounded">Inicio</button>
             {areGamesRevealed && <button onClick={() => scrollToSection('clasificacion')} className="font-mono text-xs uppercase tracking-wider px-4 py-2 hover:bg-surface-container transition-all text-on-surface rounded">Clasificación</button>}
+            {areGamesRevealed && <button onClick={() => scrollToSection('calendario')} className="font-mono text-xs uppercase tracking-wider px-4 py-2 hover:bg-surface-container transition-all text-on-surface rounded">Itinerario</button>}
             <button onClick={() => setShowRules(true)} className="font-mono text-xs uppercase tracking-wider px-4 py-2 hover:bg-surface-container transition-all text-on-surface rounded">Reglas</button>
           </nav>
         </div>
@@ -303,11 +323,22 @@ export default function Home() {
                   className="w-full bg-surface-container-low text-on-surface pl-10 pr-4 py-2.5 rounded border border-outline-variant/30 focus:border-primary-container focus:outline-none transition-colors"
                 />
               </div>
+              <div className="flex flex-col gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+                {/* Filtro de Grupos */}
+                <div className="flex gap-2 w-max">
+                  <button onClick={() => setFilterGroup('all')} className={`px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-wider transition-all ${filterGroup === 'all' ? 'bg-surface-container-highest text-on-surface border border-outline/50' : 'text-outline hover:bg-surface-container'}`}>Todos los Grupos</button>
+                  <button onClick={() => setFilterGroup('A')} className={`px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-wider transition-all ${filterGroup === 'A' ? 'bg-primary-fixed/20 text-primary-fixed border border-primary-fixed/50' : 'text-outline hover:bg-surface-container'}`}>Grupo A</button>
+                  <button onClick={() => setFilterGroup('B')} className={`px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-wider transition-all ${filterGroup === 'B' ? 'bg-secondary-fixed/20 text-secondary-fixed border border-secondary-fixed/50' : 'text-outline hover:bg-surface-container'}`}>Grupo B</button>
+                  <button onClick={() => setFilterGroup('C')} className={`px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-wider transition-all ${filterGroup === 'C' ? 'bg-tertiary-fixed/20 text-tertiary-fixed border border-tertiary-fixed/50' : 'text-outline hover:bg-surface-container'}`}>Grupo C</button>
+                </div>
+                {/* Filtro de Juegos (los que ya tenías) */}
+                <div className="flex gap-2 w-max"></div>
               <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
                 <button onClick={() => setFilterCategory('all')} className={`px-4 py-2 rounded font-mono text-xs uppercase tracking-wider whitespace-nowrap transition-all ${filterCategory === 'all' ? 'bg-primary-container text-background font-bold shadow-[0_0_15px_rgba(0,240,255,0.3)]' : 'bg-surface-container text-on-surface hover:bg-surface-container-high'}`}>Global</button>
                 <button onClick={() => setFilterCategory('minecraft')} className={`px-4 py-2 rounded font-mono text-xs uppercase tracking-wider whitespace-nowrap transition-all ${filterCategory === 'minecraft' ? 'bg-tertiary-fixed text-background font-bold shadow-[0_0_15px_rgba(200,255,100,0.3)]' : 'bg-surface-container text-on-surface hover:bg-surface-container-high'}`}>Minecraft</button>
                 <button onClick={() => setFilterCategory('clash')} className={`px-4 py-2 rounded font-mono text-xs uppercase tracking-wider whitespace-nowrap transition-all ${filterCategory === 'clash' ? 'bg-secondary-fixed text-background font-bold shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'bg-surface-container text-on-surface hover:bg-surface-container-high'}`}>Clash Royale</button>
                 <button onClick={() => setFilterCategory('fifa')} className={`px-4 py-2 rounded font-mono text-xs uppercase tracking-wider whitespace-nowrap transition-all ${filterCategory === 'fifa' ? 'bg-primary-fixed text-background font-bold shadow-[0_0_15px_rgba(100,150,255,0.3)]' : 'bg-surface-container text-on-surface hover:bg-surface-container-high'}`}>FIFA / FC</button>
+              </div>
               </div>
             </div>
 
@@ -344,10 +375,16 @@ export default function Home() {
                           transition={{ duration: 0.2, delay: idx * 0.03 }}
                           className="cursor-pointer bg-surface-container-lowest border-b border-surface-container transition-all"
                         >
-                          <td className="py-3 px-4 text-center font-bold text-on-surface-variant">#{player.rank}</td>
                           <td className="py-3 px-4">
                             <div className="font-bold text-on-surface">{player.name}</div>
-                            <div className="font-mono text-[10px] text-outline uppercase">{player.gamertag}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="font-mono text-[10px] text-outline uppercase">{player.gamertag}</span>
+                              {player.grupo && player.grupo !== '-' && (
+                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase tracking-wider border ${player.grupo === 'A' ? 'bg-primary-fixed/10 text-primary-fixed border-primary-fixed/30' : player.grupo === 'B' ? 'bg-secondary-fixed/10 text-secondary-fixed border-secondary-fixed/30' : 'bg-tertiary-fixed/10 text-tertiary-fixed border-tertiary-fixed/30'}`}>
+                                  Grupo {player.grupo}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3 px-4 text-right">{player.mc} pts</td>
                           <td className="py-3 px-4 text-right">{player.cr} pts</td>
@@ -375,7 +412,177 @@ export default function Home() {
             <p className="text-on-surface-variant max-w-md">Para mantener la intriga del torneo, la tabla de posiciones se habilitará una vez que los juegos oficiales sean revelados.</p>
           </div>
         )}
-      </section>
+
+        </section>
+
+      {/* SECCIÓN DE ITINERARIO Y LLAVES */}
+      {areGamesRevealed && (
+        <section id="calendario" className="relative z-10 w-full px-4 md:px-10 py-16 flex flex-col items-center border-t border-outline-variant/20 bg-surface-container-lowest/30 mt-12 scroll-mt-24">
+          <h2 className="text-3xl md:text-4xl font-display uppercase tracking-tight text-on-surface mb-2 text-center">Desarrollo del Torneo</h2>
+          <p className="text-on-surface-variant font-mono text-sm uppercase tracking-wider mb-8 text-center">Partidas en vivo de 13:00 a 15:00 hrs</p>
+
+          {/* Toggle / Interruptor */}
+          <div className="flex bg-surface-container-low p-1.5 rounded-xl border border-outline-variant/30 mb-10 shadow-lg">
+            <button 
+              onClick={() => setTournamentView('calendario')} 
+              className={`px-6 py-3 rounded-lg font-mono text-xs uppercase tracking-wider font-bold transition-all ${tournamentView === 'calendario' ? 'bg-primary-container text-background shadow-[0_0_15px_rgba(0,240,255,0.3)]' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'}`}
+            >
+              <span className="material-symbols-outlined text-[14px] align-middle mr-2">calendar_month</span> Calendario
+            </button>
+            <button 
+              onClick={() => setTournamentView('llaves')} 
+              className={`px-6 py-3 rounded-lg font-mono text-xs uppercase tracking-wider font-bold transition-all ${tournamentView === 'llaves' ? 'bg-secondary-fixed text-background shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'}`}
+            >
+              <span className="material-symbols-outlined text-[14px] align-middle mr-2">account_tree</span> Llaves (Brackets)
+            </button>
+          </div>
+
+          <div className="w-full max-w-5xl">
+            <AnimatePresence mode="wait">
+              {tournamentView === 'calendario' ? (
+                <motion.div 
+                  key="calendario"
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}
+                  className="grid grid-cols-1 md:grid-cols-3 gap-6"
+                >
+                  {/* Lunes 26 */}
+                  <div className="bg-surface-container p-6 rounded-xl border border-outline-variant/30 hover:border-primary-container/50 transition-colors group shadow-lg">
+                    <h3 className="font-display text-2xl font-bold text-on-surface mb-1">Lunes 26</h3>
+                    <span className="font-mono text-[10px] uppercase text-outline tracking-wider block mb-6">Octubre</span>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center bg-surface-container-lowest p-3 rounded border-l-4 border-primary-fixed">
+                        <span className="font-bold text-on-surface text-sm">FC 27</span>
+                        <span className="font-mono font-bold text-primary-fixed bg-primary-fixed/10 px-2 py-1 rounded text-xs">Grupo A</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-surface-container-lowest p-3 rounded border-l-4 border-secondary-fixed">
+                        <span className="font-bold text-on-surface text-sm">Clash Royale</span>
+                        <span className="font-mono font-bold text-secondary-fixed bg-secondary-fixed/10 px-2 py-1 rounded text-xs">Grupo B</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-surface-container-lowest p-3 rounded border-l-4 border-tertiary-fixed">
+                        <span className="font-bold text-on-surface text-sm">Minecraft</span>
+                        <span className="font-mono font-bold text-tertiary-fixed bg-tertiary-fixed/10 px-2 py-1 rounded text-xs">Grupo C</span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Martes 27 */}
+                  <div className="bg-surface-container p-6 rounded-xl border border-outline-variant/30 hover:border-primary-container/50 transition-colors group shadow-lg">
+                    <h3 className="font-display text-2xl font-bold text-on-surface mb-1">Martes 27</h3>
+                    <span className="font-mono text-[10px] uppercase text-outline tracking-wider block mb-6">Octubre</span>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center bg-surface-container-lowest p-3 rounded border-l-4 border-primary-fixed">
+                        <span className="font-bold text-on-surface text-sm">FC 27</span>
+                        <span className="font-mono font-bold text-primary-fixed bg-primary-fixed/10 px-2 py-1 rounded text-xs">Grupo C</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-surface-container-lowest p-3 rounded border-l-4 border-secondary-fixed">
+                        <span className="font-bold text-on-surface text-sm">Clash Royale</span>
+                        <span className="font-mono font-bold text-secondary-fixed bg-secondary-fixed/10 px-2 py-1 rounded text-xs">Grupo A</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-surface-container-lowest p-3 rounded border-l-4 border-tertiary-fixed">
+                        <span className="font-bold text-on-surface text-sm">Minecraft</span>
+                        <span className="font-mono font-bold text-tertiary-fixed bg-tertiary-fixed/10 px-2 py-1 rounded text-xs">Grupo B</span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Miércoles 28 */}
+                  <div className="bg-surface-container p-6 rounded-xl border border-outline-variant/30 hover:border-primary-container/50 transition-colors group shadow-lg">
+                    <h3 className="font-display text-2xl font-bold text-on-surface mb-1">Miércoles 28</h3>
+                    <span className="font-mono text-[10px] uppercase text-outline tracking-wider block mb-6">Octubre</span>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center bg-surface-container-lowest p-3 rounded border-l-4 border-primary-fixed">
+                        <span className="font-bold text-on-surface text-sm">FC 27</span>
+                        <span className="font-mono font-bold text-primary-fixed bg-primary-fixed/10 px-2 py-1 rounded text-xs">Grupo B</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-surface-container-lowest p-3 rounded border-l-4 border-secondary-fixed">
+                        <span className="font-bold text-on-surface text-sm">Clash Royale</span>
+                        <span className="font-mono font-bold text-secondary-fixed bg-secondary-fixed/10 px-2 py-1 rounded text-xs">Grupo C</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-surface-container-lowest p-3 rounded border-l-4 border-tertiary-fixed">
+                        <span className="font-bold text-on-surface text-sm">Minecraft</span>
+                        <span className="font-mono font-bold text-tertiary-fixed bg-tertiary-fixed/10 px-2 py-1 rounded text-xs">Grupo A</span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div 
+                  key="llaves"
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}
+                  className="w-full bg-surface-container rounded-xl border border-outline-variant/30 overflow-hidden shadow-lg flex flex-col"
+                >
+                  {/* Selectores de Juego y Grupo (Filtros) */}
+                  <div className="flex flex-wrap gap-4 p-4 bg-surface-container-highest border-b border-outline-variant/30">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-outline">sports_esports</span>
+                      <select value={bracketGame} onChange={e => setBracketGame(e.target.value)} className="p-2.5 bg-background text-on-surface rounded-lg font-mono text-sm border border-outline-variant/30 outline-none focus:border-secondary-fixed font-bold">
+                        <option value="fc27">FC 27</option>
+                        <option value="clash">Clash Royale</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-outline">group</span>
+                      <select value={bracketGroup} onChange={e => setBracketGroup(e.target.value)} className="p-2.5 bg-background text-on-surface rounded-lg font-mono text-sm border border-outline-variant/30 outline-none focus:border-secondary-fixed font-bold">
+                        <option value="A">Grupo A</option><option value="B">Grupo B</option><option value="C">Grupo C</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* LIENZO DEL BRACKET */}
+                  <div className="w-full flex-1 bg-surface-container-lowest min-h-[500px] p-6 md:p-10 overflow-x-auto">
+                    {matches.filter(m => m.juego === bracketGame && m.grupo === bracketGroup).length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full text-outline mt-20">
+                        <span className="material-symbols-outlined text-6xl mb-4 opacity-50">casino</span>
+                        <p className="font-mono uppercase tracking-wider text-sm">Las llaves para este grupo aún no han sido sorteadas.</p>
+                      </div>
+                    ) : (
+                      <div className="flex gap-8 md:gap-16 min-w-max pb-10">
+                        {/* Iteramos por las 4 fases del torneo */}
+                        {['Previa', 'Cuartos', 'Semi', 'Final'].map(fase => (
+                          <div key={fase} className="flex flex-col gap-6 min-w-[220px] md:min-w-[260px] justify-center">
+                            <h4 className="font-display text-lg text-secondary-fixed uppercase text-center border-b border-secondary-fixed/30 pb-2 mb-2">
+                              {fase === 'Semi' ? 'Semifinal' : fase}
+                            </h4>
+                            
+                            {matches
+                              .filter(m => m.juego === bracketGame && m.grupo === bracketGroup && m.ronda.includes(fase))
+                              .map(m => (
+                              <div key={m.id} className={`flex flex-col rounded-lg border overflow-hidden transition-all ${m.estado === 'jugando' ? 'border-primary-fixed shadow-[0_0_15px_rgba(0,240,255,0.2)] scale-105' : 'border-outline-variant/30 hover:border-outline-variant'}`}>
+                                
+                                {/* JUGADOR 1 */}
+                                <div className={`flex justify-between items-center p-3 ${m.ganador === 'jugador1' ? 'bg-secondary-fixed/20 text-secondary-fixed font-bold' : m.ganador === 'jugador2' ? 'bg-surface-container-lowest opacity-40' : 'bg-surface-container-low text-on-surface'}`}>
+                                  <span className="truncate text-sm font-medium">{m.jugador1}</span>
+                                  <span className="font-mono font-bold text-lg">{m.marcador1}</span>
+                                </div>
+                                
+                                {/* LÍNEA DIVISORIA VS */}
+                                <div className="h-[1px] bg-outline-variant/30 w-full relative">
+                                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-mono italic bg-surface-container-low px-1.5 rounded text-outline-variant border border-outline-variant/30">VS</span>
+                                </div>
+                                
+                                {/* JUGADOR 2 */}
+                                <div className={`flex justify-between items-center p-3 ${m.ganador === 'jugador2' ? 'bg-secondary-fixed/20 text-secondary-fixed font-bold' : m.ganador === 'jugador1' ? 'bg-surface-container-lowest opacity-40' : 'bg-surface-container-low text-on-surface'}`}>
+                                  <span className="truncate text-sm font-medium">{m.jugador2}</span>
+                                  <span className="font-mono font-bold text-lg">{m.marcador2}</span>
+                                </div>
+                                
+                                {/* INDICADOR EN VIVO */}
+                                {m.estado === 'jugando' && (
+                                  <div className="bg-primary-fixed text-background text-[10px] font-mono font-bold uppercase text-center py-1 tracking-widest animate-pulse">
+                                    🔴 En Vivo
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </section>
+      )}
 
       {/* FOOTER COMPLETO */}
       <footer className="w-full border-t border-outline-variant/30 bg-surface-container-lowest py-10 mt-16 relative z-10">
