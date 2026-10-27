@@ -6,7 +6,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const ITEMS_PER_PAGE = 7;
 
+
 export default function Home() {
+  const [filtroGrupo, setFiltroGrupo] = useState('Todos');
+  const [filtroJuego, setFiltroJuego] = useState('global');
   const [players, setPlayers] = useState<any[]>([]);
   const [areGamesRevealed, setAreGamesRevealed] = useState(false);
   
@@ -102,6 +105,31 @@ export default function Home() {
 
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
+// EL EMBUDO MATEMÁTICO (Adaptado a tus botones exactos)
+  const jugadoresFiltrados = players
+    .map(p => {
+      // Blindaje contra valores nulos
+      const mc = Number(p.mc) || 0;
+      const cr = Number(p.cr) || 0;
+      const fifa = Number(p.fifa) || 0;
+      return { ...p, mc, cr, fifa, totalReal: mc + cr + fifa };
+    })
+    .filter(p => filterGroup === 'all' ? true : p.grupo === filterGroup)
+    .sort((a, b) => {
+      if (filterCategory === 'all') return b.totalReal - a.totalReal;
+      if (filterCategory === 'minecraft') return b.mc - a.mc;
+      if (filterCategory === 'clash') return b.cr - a.cr;
+      if (filterCategory === 'fifa') return b.fifa - a.fifa;
+      return 0;
+    });
+
+  const getPuntosDisplay = (jugador: any) => {
+    if (!jugador) return 0;
+    if (filterCategory === 'minecraft') return jugador.mc;
+    if (filterCategory === 'clash') return jugador.cr;
+    if (filterCategory === 'fifa') return jugador.fifa;
+    return jugador.totalReal;
   };
 
   return (
@@ -346,8 +374,8 @@ export default function Home() {
               <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
                   <tr className="bg-surface-container-high/60 text-on-surface-variant font-mono text-[10px] uppercase tracking-wider">
-                    <th className="py-4 px-4 text-center">POS</th>
-                    <th className="py-4 px-4">JUGADOR</th>
+                    <th className="py-4 px-4 text-center">JUGADOR</th>
+                    <th className="py-4 px-4"></th>
                     <th className="py-4 px-4 text-right">Minecraft</th>
                     <th className="py-4 px-4 text-right">Clash Royale</th>
                     <th className="py-4 px-4 text-right">FIFA</th>
@@ -386,10 +414,11 @@ export default function Home() {
                               )}
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-right">{player.mc} pts</td>
-                          <td className="py-3 px-4 text-right">{player.cr} pts</td>
-                          <td className="py-3 px-4 text-right">{player.fifa} pts</td>
-                          <td className="py-3 px-4 text-right font-bold text-lg text-primary-container">{player.total} pts</td>
+                          <td className="py-3 px-4 text-right"></td>
+                          <td className="py-3 px-4 text-right">{player.mc || 0} pts</td>
+                          <td className="py-3 px-4 text-right">{player.cr || 0} pts</td>
+                          <td className="py-3 px-4 text-right">{player.fifa || 0} pts</td>
+                          <td className="py-3 px-4 text-right font-bold text-lg text-primary-container">{player.total || 0} pts</td>
                         </motion.tr>
                       ))
                     )}
