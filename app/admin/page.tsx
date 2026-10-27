@@ -24,33 +24,51 @@ export default function AdminPage() {
     fetchMatches();
   }, []);
 
+ // Nuevo estado para el Toast (agrégalo junto a tus otros useState)
+  const [toast, setToast] = useState({ visible: false, message: '' });
+
+  // Nuevo sistema visual de notificación (borra el alert anterior)
   const showToast = (mensaje: string) => {
-    alert(mensaje); // Puedes cambiar esto por tu componente Toast personalizado si tienes uno
+    setToast({ visible: true, message: mensaje });
+    setTimeout(() => setToast({ visible: false, message: '' }), 3000); // Desaparece en 3 seg
   };
 
   // ================= FUNCIONES VISTA 1: JUGADORES =================
-  const fetchRegistros = async () => {
-    setLoading(true);
+const fetchRegistros = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     const { data, error } = await supabase.from('players').select('*').order('total', { ascending: false });
     if (data) setRegistros(data);
-    setLoading(false);
+    if (showLoading) setLoading(false);
   };
 
   const handleUpdatePoints = async (id: string, field: string, value: string) => {
-    const numValue = parseInt(value) || 0;
+    const numValue = value === '' ? 0 : parseInt(value);
+    
     const { data: player } = await supabase.from('players').select('*').eq('id', id).single();
     if (!player) return;
 
-    const newPlayer = { ...player, [field]: numValue };
-    newPlayer.total = newPlayer.minecraft + newPlayer.clash + newPlayer.fifa;
+    // Calculamos el nuevo total usando 'mc' y 'cr'
+    const m = field === 'mc' ? numValue : (Number(player.mc) || 0);
+    const c = field === 'cr' ? numValue : (Number(player.cr) || 0);
+    const f = field === 'fifa' ? numValue : (Number(player.fifa) || 0);
+    const nuevoTotal = m + c + f;
 
-    await supabase.from('players').update({
+    const { error } = await supabase.from('players').update({
       [field]: numValue,
-      total: newPlayer.total
+      total: nuevoTotal
     }).eq('id', id);
     
-    fetchRegistros();
-    showToast(`✅ Puntos de ${field} actualizados`);
+    if (error) {
+      console.error("Error de Supabase:", error);
+      showToast(`❌ Error DB: Verifica que la columna se llame '${field}'`);
+      return; 
+    }
+    
+    fetchRegistros(false);
+    
+    // Mostramos un nombre bonito en la notificación
+    const nombreJuego = field === 'mc' ? 'MINECRAFT' : field === 'cr' ? 'CLASH ROYALE' : 'FC 27';
+    showToast(`✅ Puntos de ${nombreJuego} actualizados`);
   };
 
   const handleUpdateGrupo = async (id: string, grupo: string) => {
@@ -264,10 +282,10 @@ export default function AdminPage() {
                           </select>
                         </td>
                         <td className="p-4 text-center">
-                          <input type="number" defaultValue={player.minecraft} onBlur={(e) => handleUpdatePoints(player.id, 'minecraft', e.target.value)} className="w-16 p-1.5 bg-surface-container text-center rounded border border-outline-variant/30 focus:border-tertiary-fixed outline-none" />
+                          <input type="number" defaultValue={player.mc} onBlur={(e) => handleUpdatePoints(player.id, 'mc', e.target.value)} className="w-16 p-1.5 bg-surface-container text-center rounded border border-outline-variant/30 focus:border-tertiary-fixed outline-none" />
                         </td>
                         <td className="p-4 text-center">
-                          <input type="number" defaultValue={player.clash} onBlur={(e) => handleUpdatePoints(player.id, 'clash', e.target.value)} className="w-16 p-1.5 bg-surface-container text-center rounded border border-outline-variant/30 focus:border-secondary-fixed outline-none" />
+                          <input type="number" defaultValue={player.cr} onBlur={(e) => handleUpdatePoints(player.id, 'cr', e.target.value)} className="w-16 p-1.5 bg-surface-container text-center rounded border border-outline-variant/30 focus:border-secondary-fixed outline-none" />
                         </td>
                         <td className="p-4 text-center">
                           <input type="number" defaultValue={player.fifa} onBlur={(e) => handleUpdatePoints(player.id, 'fifa', e.target.value)} className="w-16 p-1.5 bg-surface-container text-center rounded border border-outline-variant/30 focus:border-primary-fixed outline-none" />
@@ -413,6 +431,19 @@ export default function AdminPage() {
         </div>
 
       </main>
+      {/* SISTEMA DE NOTIFICACIONES TOAST (NEÓN) */}
+      <AnimatePresence>
+        {toast.visible && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-24 sm:bottom-10 left-1/2 -translate-x-1/2 bg-surface-container-highest border border-primary-fixed text-on-surface px-6 py-3 rounded-full shadow-[0_0_20px_rgba(0,240,255,0.4)] z-50 font-mono text-sm font-bold flex items-center gap-2 pointer-events-none"
+          >
+            {toast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* BARRA DE NAVEGACIÓN INFERIOR (MÓVIL) */}
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-surface-container-high/90 backdrop-blur-md border-t border-outline-variant/30 flex justify-around p-3 z-50">
