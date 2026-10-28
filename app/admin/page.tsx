@@ -11,7 +11,10 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [isDrawing, setIsDrawing] = useState(false);
-  
+ // ================= ESTADO DE SEGURIDAD =================
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState(false); 
   // Vista 2: Llaves
   const [adminView, setAdminView] = useState<'jugadores' | 'llaves'>('jugadores');
   const [matches, setMatches] = useState<any[]>([]);
@@ -182,7 +185,61 @@ const fetchRegistros = async (showLoading = true) => {
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (p.gamertag && p.gamertag.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+// ================= PANTALLA DE LOGIN =================
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Cambia 'WIEEEK2026' por la contraseña segura que quieras usar
+    if (password === 'WIEEEK2026') {
+      setIsAuthenticated(true);
+    } else {
+      setLoginError(true);
+      setTimeout(() => setLoginError(false), 3000);
+    }
+  };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden selection:bg-primary-fixed/30">
+        {/* Efecto de luces de fondo */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary-fixed/5 blur-[100px] rounded-full pointer-events-none"></div>
+        
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }} 
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-surface-container-low border border-outline-variant/30 p-8 rounded-2xl shadow-2xl z-10 w-full max-w-md relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-fixed to-secondary-fixed"></div>
+          
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 bg-primary-fixed rounded-xl flex items-center justify-center text-background font-black text-3xl rotate-3 shadow-[0_0_20px_rgba(0,240,255,0.4)]">W</div>
+          </div>
+          
+          <h2 className="text-2xl font-display font-black text-center text-on-surface uppercase tracking-tight mb-2">Panel de Control</h2>
+          <p className="text-center font-mono text-xs text-outline mb-8 uppercase tracking-widest">Acceso Restringido</p>
+          
+          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            <div>
+              <input 
+                type="password" 
+                placeholder="Contraseña de administrador..." 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={`w-full bg-surface-container-lowest text-on-surface text-center font-mono px-4 py-3 rounded-lg border ${loginError ? 'border-error text-error shadow-[0_0_10px_rgba(255,0,0,0.2)]' : 'border-outline-variant/30 focus:border-primary-fixed'} outline-none transition-all`}
+                autoFocus
+              />
+            </div>
+            
+            <button 
+              type="submit" 
+              className="w-full bg-primary-fixed text-background font-mono font-bold text-sm uppercase tracking-wider py-3 rounded-lg hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all hover:-translate-y-0.5"
+            >
+              Entrar a la Arena
+            </button>
+          </form>
+        </motion.div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-background pb-20">
       
